@@ -1,4 +1,6 @@
-"""Implementation of the autodifferentiation Functions for Tensor."""
+"""
+Implementation of the autodifferentiation Functions for Tensor.
+"""
 
 from __future__ import annotations
 
@@ -20,8 +22,8 @@ if TYPE_CHECKING:
     from .tensor_data import UserIndex, UserShape
 
 
-def wrap_tuple(x: Any) -> tuple:  # type: ignore
-    """Turn a possible value into a tuple"""
+def wrap_tuple(x):  # type: ignore
+    "Turn a possible value into a tuple"
     if isinstance(x, tuple):
         return x
     return (x,)
@@ -39,7 +41,6 @@ class Function:
 
     @classmethod
     def apply(cls, *vals: Tensor) -> Tensor:
-        """Call the forward function and track history"""
         raw_vals = []
         need_grad = False
         for v in vals:
@@ -95,16 +96,170 @@ class Add(Function):
         return grad_output, grad_output
 
 
+class Mul(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.3.
+        ctx.save_for_backward(a, b)
+        return a.f.mul_zip(a,b)
+        # raise NotImplementedError("Need to implement for Task 2.3")
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        # TODO: Implement for Task 2.4.
+        (a,b) = ctx.saved_values
+        return b.f.mul_zip(b,grad_output), a.f.mul_zip(a,grad_output)
+        # raise NotImplementedError("Need to implement for Task 2.4")
+
+
+class Sigmoid(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.3.
+        b = t1.f.sigmoid_map(t1)
+        ctx.save_for_backward(b)
+        return b
+        # raise NotImplementedError("Need to implement for Task 2.3")
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.4.
+        (b,) = ctx.saved_values
+        one_minus_b = grad_output.f.add_zip(tensor([1.0]),grad_output.f.neg_map(b))
+        return grad_output.f.mul_zip(one_minus_b, grad_output.f.mul_zip(grad_output,b))
+        # raise NotImplementedError("Need to implement for Task 2.4")
+
+
+class ReLU(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.3.
+        ctx.save_for_backward(t1)
+        return t1.f.relu_map(t1)
+        # raise NotImplementedError("Need to implement for Task 2.3")
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.4.
+        (t1,) = ctx.saved_values
+        return grad_output.f.relu_back_zip(t1, grad_output)
+        # raise NotImplementedError("Need to implement for Task 2.4")
+
+
+class Log(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.3.
+        ctx.save_for_backward(t1)
+        return t1.f.log_map(t1)
+        # raise NotImplementedError("Need to implement for Task 2.3")
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.4.
+        (t1,) = ctx.saved_values
+        return grad_output.f.log_back_zip(t1, grad_output)
+        # raise NotImplementedError("Need to implement for Task 2.4")
+
+
+class Exp(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.3.
+        exp = t1.f.exp_map(t1)
+        ctx.save_for_backward(exp)
+        return exp
+        # raise NotImplementedError("Need to implement for Task 2.3")
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.4.
+        (exp,) = ctx.saved_values
+        return grad_output.f.mul_zip(exp, grad_output)
+        # raise NotImplementedError("Need to implement for Task 2.4")
+
+
+class Sum(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
+        ctx.save_for_backward(a.shape, dim)
+        return a.f.add_reduce(a, int(dim.item()))
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
+        a_shape, dim = ctx.saved_values
+        return grad_output, 0.0
+
+
 class All(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
-        """Return 1 if all are true"""
         if dim is not None:
             return a.f.mul_reduce(a, int(dim.item()))
         else:
             return a.f.mul_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
 
 
+class LT(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.3.
+        return a.f.lt_zip(a, b)
+        # raise NotImplementedError("Need to implement for Task 2.3")
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        # TODO: Implement for Task 2.4.
+        return zeros(grad_output.shape,grad_output.backend), zeros(grad_output.shape,grad_output.backend)
+        # raise NotImplementedError("Need to implement for Task 2.4")
+
+
+class EQ(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.3.
+        return a.f.eq_zip(a, b)
+        # raise NotImplementedError("Need to implement for Task 2.3")
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        # TODO: Implement for Task 2.4.
+        return zeros(grad_output.shape,grad_output.backend), zeros(grad_output.shape,grad_output.backend)
+        # raise NotImplementedError("Need to implement for Task 2.4")
+
+
+class IsClose(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.3.
+        return a.f.is_close_zip(a, b)
+        # raise NotImplementedError("Need to implement for Task 2.3")
+
+
+class Permute(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor, order: Tensor) -> Tensor:
+        # TODO: Implement for Task 2.3.
+        int_order = order.to_numpy().astype(int).tolist()  # => [numpy.float64(0.0)]
+        ctx.save_for_backward(int_order)
+        permuted = a._tensor.permute(*int_order)
+        return minitorch.Tensor.make(
+            permuted._storage, permuted.shape, backend=a.backend
+        )
+        # raise NotImplementedError("Need to implement for Task 2.3")
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
+        # TODO: Implement for Task 2.4.
+        (order,) = ctx.saved_values
+        permuted = grad_output._tensor.permute(*np.argsort(order).tolist())
+        return (
+            minitorch.Tensor.make(
+                permuted._storage, permuted.shape, backend=grad_output.backend
+            ),
+            0.0,
+        )
+        # raise NotImplementedError("Need to implement for Task 2.4")
 
 
 class View(Function):
@@ -119,7 +274,6 @@ class View(Function):
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
-        """Matrix Multiply backward (module 3)"""
         (original,) = ctx.saved_values
         return (
             minitorch.Tensor.make(
@@ -132,25 +286,21 @@ class View(Function):
 class Copy(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor) -> Tensor:
-        """Id function makes contiguous"""
         return a.f.id_map(a)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
-        """Undo"""
         return grad_output
 
 
 class MatMul(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
-        """Matrix Multiply Forward (module 3)"""
         ctx.save_for_backward(t1, t2)
         return t1.f.matrix_multiply(t1, t2)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
-        """Matrix Multiply backward (module 3)"""
         t1, t2 = ctx.saved_values
 
         def transpose(a: Tensor) -> Tensor:
@@ -166,20 +316,18 @@ class MatMul(Function):
 
 # Helpers for Constructing tensors
 def zeros(shape: UserShape, backend: TensorBackend = SimpleBackend) -> Tensor:
-    """Produce a zero tensor of size `shape`.
+    """
+    Produce a zero tensor of size `shape`.
 
     Args:
-    ----
         shape : shape of tensor
         backend : tensor backend
 
     Returns:
-    -------
         new tensor
-
     """
     return minitorch.Tensor.make(
-        [0.0] * int(operators.prod(shape)), shape, backend=backend
+        [0] * int(operators.prod(shape)), shape, backend=backend
     )
 
 
@@ -188,18 +336,16 @@ def rand(
     backend: TensorBackend = SimpleBackend,
     requires_grad: bool = False,
 ) -> Tensor:
-    """Produce a random tensor of size `shape`.
+    """
+    Produce a random tensor of size `shape`.
 
     Args:
-    ----
         shape : shape of tensor
         backend : tensor backend
         requires_grad : turn on autodifferentiation
 
     Returns:
-    -------
         :class:`Tensor` : new tensor
-
     """
     vals = [random.random() for _ in range(int(operators.prod(shape)))]
     tensor = minitorch.Tensor.make(vals, shape, backend=backend)
@@ -213,19 +359,17 @@ def _tensor(
     backend: TensorBackend = SimpleBackend,
     requires_grad: bool = False,
 ) -> Tensor:
-    """Produce a tensor with data ls and shape `shape`.
+    """
+    Produce a tensor with data ls and shape `shape`.
 
     Args:
-    ----
         ls: data for tensor
         shape: shape of tensor
         backend: tensor backend
         requires_grad: turn on autodifferentiation
 
     Returns:
-    -------
         new tensor
-
     """
     tensor = minitorch.Tensor.make(ls, shape, backend=backend)
     tensor.requires_grad_(requires_grad)
@@ -235,18 +379,16 @@ def _tensor(
 def tensor(
     ls: Any, backend: TensorBackend = SimpleBackend, requires_grad: bool = False
 ) -> Tensor:
-    """Produce a tensor with data and shape from ls
+    """
+    Produce a tensor with data and shape from ls
 
     Args:
-    ----
         ls: data for tensor
         backend : tensor backend
         requires_grad : turn on autodifferentiation
 
     Returns:
-    -------
         :class:`Tensor` : new tensor
-
     """
 
     def shape(ls: Any) -> List[int]:
@@ -283,7 +425,6 @@ def grad_central_difference(
 
 
 def grad_check(f: Any, *vals: Tensor) -> None:
-    """Check whether autodiff matches central difference."""
     for x in vals:
         x.requires_grad_(True)
         x.zero_grad_()
