@@ -2,7 +2,7 @@ from mnist import MNIST
 
 import minitorch
 
-mndata = MNIST("project/data/")
+mndata = MNIST("./data")
 images, labels = mndata.load_training()
 
 BACKEND = minitorch.TensorBackend(minitorch.FastOps)
@@ -42,7 +42,10 @@ class Conv2d(minitorch.Module):
 
     def forward(self, input):
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        y = minitorch.conv2d(input, self.weights.value)  # [B, OUT_C, H, W]
+        y = y + self.bias.value  # [B, OUT_C, H, W]
+        return y
+        # raise NotImplementedError("Need to implement for Task 4.5")
 
 
 class Network(minitorch.Module):
@@ -68,11 +71,23 @@ class Network(minitorch.Module):
         self.out = None
 
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        self.layer1 = Conv2d(1, 4, 3, 3)
+        self.layer2 = Conv2d(4, 8, 3, 3)
+        self.layer3 = Linear(392, 64)
+        self.layer4 = Linear(64, 10)
+        # raise NotImplementedError("Need to implement for Task 4.5")
 
     def forward(self, x):
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        self.mid = self.layer1(x).relu()
+        self.out = self.layer2(self.mid).relu()
+        pool = minitorch.avgpool2d(self.out, (4, 4)).view(BATCH,392)
+        x3 = self.layer3(pool).relu()
+        if self.mode == "train":
+            x3 = minitorch.dropout(pool, 0.25)
+        x4 = self.layer4(x3)
+        return minitorch.logsoftmax(x4, 1)
+        # raise NotImplementedError("Need to implement for Task 4.5")
 
 
 def make_mnist(start, stop):
